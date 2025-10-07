@@ -8,11 +8,11 @@ const connections = require('../connections');
 const router = express.Router();
 
 // ============================================
-// GET /stream?userId=XXX
+// GET /notifications/stream/:userId
 // Establece conexión SSE con el cliente
 // ============================================
-router.get('/', (req, res) => {
-  const { userId } = req.query;
+router.get('/:userId', (req, res) => {
+  const { userId } = req.params;
 
   // Validación básica (en producción validarías token de auth)
   if (!userId) {

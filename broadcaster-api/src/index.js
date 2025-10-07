@@ -8,7 +8,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const streamRouter = require('./routes/stream');
-const pubsubHandlerRouter = require('./services/pubsub-handler');
+const redisSubscriber = require('./services/redis-subscriber');
 
 const app = express();
 const PORT = process.env.PORT || 8081;
@@ -48,10 +48,7 @@ app.get('/health', (req, res) => {
 });
 
 // SSE Stream endpoint
-app.use('/stream', streamRouter);
-
-// Pub/Sub push handler (internal endpoint)
-app.use('/_internal', pubsubHandlerRouter);
+app.use('/notifications/stream', streamRouter);
 
 // 404
 app.use((req, res) => {
@@ -71,8 +68,28 @@ app.use((err, req, res, next) => {
 // START SERVER
 // ============================================
 
-app.listen(PORT, () => {
-  console.log(`✅ Broadcaster API running on port ${PORT}`);
-  console.log(`📡 SSE endpoint: /stream`);
-  console.log(`🔔 Pub/Sub handler: /_internal/pubsub-handler`);
+async function startServer() {
+  try {
+    // Conectar a Redis
+    await redisSubscriber.connect();
+    
+    // Iniciar servidor
+    app.listen(PORT, () => {
+      console.log(`✅ Broadcaster API running on port ${PORT}`);
+      console.log(`📡 SSE endpoint: /notifications/stream`);
+      console.log(`🔔 Redis subscriber: activo`);
+    });
+  } catch (error) {
+    console.error('❌ Error iniciando servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Manejo de cierre graceful
+process.on('SIGINT', async () => {
+  console.log('\n🔄 Cerrando servidor...');
+  await redisSubscriber.close();
+  process.exit(0);
 });
+
+startServer();
