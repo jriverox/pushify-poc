@@ -5,8 +5,8 @@
 
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const firestoreService = require('../services/firestore');
-const pubsubService = require('../services/pubsub');
+const mongoService = require('../services/mongodb');
+const redisService = require('../services/redis');
 
 const router = express.Router();
 
@@ -65,13 +65,13 @@ router.post('/', async (req, res) => {
 
     console.log(`[CREATE] Notificación ${messageId} para ${recipient.type}:${recipient.id}`);
 
-    // 1. Guardar en Firestore
-    await firestoreService.createNotification(messageId, notificationDoc);
-    console.log(`[FIRESTORE] ✅ Guardado: ${messageId}`);
+    // 1. Guardar en MongoDB
+    await mongoService.createNotification(messageId, notificationDoc);
+    console.log(`[MONGODB] Guardado: ${messageId}`);
 
-    // 2. Publicar a Pub/Sub para entrega en tiempo real
-    await pubsubService.publishNotification(notificationDoc);
-    console.log(`[PUBSUB] ✅ Publicado: ${messageId}`);
+    // 2. Publicar a Redis para entrega en tiempo real
+    await redisService.publishNotification(notificationDoc);
+    console.log(`[REDIS] Publicado: ${messageId}`);
 
     // Responder inmediatamente (asíncrono)
     res.status(202).json({
@@ -103,8 +103,8 @@ router.get('/', async (req, res) => {
 
     console.log(`[FETCH] Notificaciones para userId=${userId}, status=${status}`);
 
-    // Obtener notificaciones desde Firestore
-    const notifications = await firestoreService.getNotificationsByUser(userId, status);
+    // Obtener notificaciones desde MongoDB
+    const notifications = await mongoService.getNotificationsByUser(userId, status);
 
     console.log(`[FETCH] ✅ Encontradas ${notifications.length} notificaciones`);
 
@@ -140,7 +140,7 @@ router.patch('/:id/read', async (req, res) => {
     console.log(`[READ] Marcando notificación ${id} como leída por userId=${userId}`);
 
     // Verificar que la notificación existe y pertenece al usuario
-    const notification = await firestoreService.getNotificationById(id);
+    const notification = await mongoService.getNotificationById(id);
     
     if (!notification) {
       return res.status(404).json({ error: 'Notification not found' });
@@ -152,7 +152,7 @@ router.patch('/:id/read', async (req, res) => {
     }
 
     // Actualizar estado a "read"
-    await firestoreService.markAsRead(id);
+    await mongoService.markAsRead(id);
     console.log(`[READ] ✅ Notificación ${id} marcada como leída`);
 
     res.status(204).send();
