@@ -10,11 +10,12 @@
     "build": "echo 'no build step'"
   },
   "dependencies": {
+    "@google-cloud/pubsub": "^5.2.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
-    "uuid": "^9.0.1",
-    "@google-cloud/firestore": "^7.10.0",
-    "@google-cloud/pubsub": "^4.6.2"
+    "mongodb": "^6.3.0",
+    "redis": "^4.6.12",
+    "uuid": "^9.0.1"
   }
 }

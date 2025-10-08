@@ -1,18 +1,7 @@
-// ============================================
-// Handler para mensajes de Pub/Sub
-// ============================================
+const sseConnectionManager = require('../sse-connection-manager');
+const mongoService = require('../services/mongodb');
 
-const express = require('express');
-const connections = require('../connections');
-const firestoreService = require('./firestore');
-
-const router = express.Router();
-
-// ============================================
-// POST /_internal/pubsub-handler
-// Recibe mensajes push de Pub/Sub
-// ============================================
-router.post('/pubsub-handler', async (req, res) => {
+const subscriptionHandler = async (req, res) => {
   try {
     // Pub/Sub envía los mensajes en este formato
     const { message } = req.body;
@@ -29,7 +18,9 @@ router.post('/pubsub-handler', async (req, res) => {
 
     const { messageId, recipient, notification } = messageData;
 
-    console.log(`[PUBSUB] 📨 Mensaje recibido: ${messageId} para ${recipient.type}:${recipient.id}`);
+    console.log(
+      `[PUBSUB] 📨 Mensaje recibido: ${messageId} para ${recipient.type}:${recipient.id}`
+    );
 
     // ============================================
     // BUSCAR CONEXIONES ACTIVAS
@@ -38,30 +29,34 @@ router.post('/pubsub-handler', async (req, res) => {
 
     if (recipient.type === 'individual') {
       // Notificación para usuario específico
-      const connection = connections.getUserConnection(recipient.id);
+      const connection = sseConnectionManager.getUserConnection(recipient.id);
       if (connection) {
         targetConnections.push(connection);
       }
     } else if (recipient.type === 'group') {
       // Notificación para grupo
-      targetConnections = connections.getGroupConnections(recipient.id);
+      targetConnections = sseConnectionManager.getGroupConnections(
+        recipient.id
+      );
     } else if (recipient.type === 'broadcast') {
       // Broadcast a todos los usuarios conectados
-      targetConnections = Array.from(connections.users.values());
+      targetConnections = Array.from(sseConnectionManager.users.values());
     }
 
     // ============================================
     // ENVIAR NOTIFICACIÓN POR SSE
     // ============================================
     if (targetConnections.length > 0) {
-      console.log(`[PUBSUB] ✅ Enviando a ${targetConnections.length} conexiones activas`);
+      console.log(
+        `[PUBSUB] ✅ Enviando a ${targetConnections.length} conexiones activas`
+      );
 
       // Preparar payload SSE
       const sseData = JSON.stringify({
         messageId,
         notification,
         recipient,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Enviar a cada conexión
@@ -80,22 +75,26 @@ router.post('/pubsub-handler', async (req, res) => {
 
       console.log(`[PUBSUB] ✅ Enviado exitosamente a ${sentCount} conexiones`);
 
-      // Actualizar estado en Firestore
-      await firestoreService.markAsDelivered(messageId);
-
+      // Actualizar estado en MongoDB
+      await mongoService.markAsDelivered(messageId);
+      console.log(
+        `[PUBSUB] ✅ Notificación ${messageId} marcada como entregada`
+      );
     } else {
-      console.log(`[PUBSUB] ⚠️  No hay conexiones activas para ${recipient.type}:${recipient.id}`);
-      console.log('[PUBSUB] La notificación permanece en Firestore como "pending"');
+      console.log(
+        `[PUBSUB] ⚠️  No hay conexiones activas para ${recipient.type}:${recipient.id}`
+      );
     }
 
     // ACK a Pub/Sub (siempre responder 200 para no reintentar)
     res.status(200).send('OK');
-
   } catch (error) {
     console.error('[PUBSUB ERROR]', error);
     // Aún así hacer ACK para no bloquear el topic
     res.status(200).send('ERROR');
   }
-});
+};
 
-module.exports = router;
+module.exports = {
+  subscriptionHandler,
+};

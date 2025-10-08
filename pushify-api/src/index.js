@@ -6,8 +6,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
 const notificationsRouter = require('./routes/notifications');
+const mongoService = require('./services/mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -58,7 +58,27 @@ app.use((err, req, res, next) => {
 // START SERVER
 // ============================================
 
-app.listen(PORT, () => {
-  console.log(`✅ Pushify API running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+async function startServer() {
+  try {
+    // Conectar a MongoDB
+    await mongoService.connect();
+
+    // Iniciar servidor
+    app.listen(PORT, () => {
+      console.log(`✅ Pushify API running on port ${PORT}`);
+      console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  } catch (error) {
+    console.error('❌ Error iniciando servidor:', error);
+    process.exit(1);
+  }
+}
+
+// Manejo de cierre graceful
+process.on('SIGINT', async () => {
+  console.log('\n🔄 Cerrando servidor...');
+  await mongoService.close();
+  process.exit(0);
 });
+
+startServer();

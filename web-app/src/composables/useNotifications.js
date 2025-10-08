@@ -29,10 +29,10 @@ export function useNotifications(userId) {
 
       if (response.ok) {
         const data = await response.json();
-        notifications.value = data.sort(
+        notifications.value = data.notifications.sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
-        console.log(`✅ ${data.length} notificaciones pendientes recuperadas`);
+        console.log(`✅ ${data.notifications.length} notificaciones pendientes recuperadas`);
       }
     } catch (error) {
       console.error('❌ Error recuperando notificaciones:', error);
@@ -106,7 +106,7 @@ export function useNotifications(userId) {
   async function markAsRead(notificationId) {
     try {
       const response = await fetch(
-        `${API_URL}/notifications/${notificationId}/read`,
+        `${API_URL}/notifications/${notificationId}/read?userId=${userId}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

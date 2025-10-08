@@ -1,28 +1,29 @@
 // ============================================
-// Gestor de conexiones SSE activas
+// Gestor de conexiones SSE (Server-Sent Events ) activas
+// https://medium.com/trendyol-tech/how-we-used-server-sent-events-sse-to-deliver-real-time-notifications-on-our-backend-ebae41d3b5cb
 // ============================================
 
 /**
  * MAPS DE CONEXIONES
- * 
+ *
  * Mantiene registro de usuarios conectados para poder
  * enviarles notificaciones en tiempo real.
- * 
+ *
  * Estructura:
  * - users: Map<userId, Response>
  * - groups: Map<groupId, Response[]>
  */
 
-class ConnectionManager {
+class SSEConnectionManager {
   constructor() {
     // Map de usuarios individuales
     // Key: userId, Value: Response object de Express
     this.users = new Map();
-    
+
     // Map de grupos
     // Key: groupId, Value: Array de Response objects
     this.groups = new Map();
-    
+
     console.log('[CONNECTIONS] Manager iniciado');
   }
 
@@ -31,7 +32,9 @@ class ConnectionManager {
   // ============================================
   addUserConnection(userId, response) {
     this.users.set(userId, response);
-    console.log(`[CONNECTIONS] ✅ Usuario ${userId} conectado. Total: ${this.users.size}`);
+    console.log(
+      `[CONNECTIONS] ✅ Usuario ${userId} conectado. Total: ${this.users.size}`
+    );
   }
 
   // ============================================
@@ -51,7 +54,9 @@ class ConnectionManager {
   removeUserConnection(userId) {
     const existed = this.users.delete(userId);
     if (existed) {
-      console.log(`[CONNECTIONS] ❌ Usuario ${userId} desconectado. Total: ${this.users.size}`);
+      console.log(
+        `[CONNECTIONS] ❌ Usuario ${userId} desconectado. Total: ${this.users.size}`
+      );
     }
   }
 
@@ -65,7 +70,7 @@ class ConnectionManager {
       if (index > -1) {
         connections.splice(index, 1);
       }
-      
+
       // Si el grupo queda vacío, eliminarlo
       if (connections.length === 0) {
         this.groups.delete(groupId);
@@ -93,7 +98,7 @@ class ConnectionManager {
   getConnectionCount() {
     return {
       users: this.users.size,
-      groups: this.groups.size
+      groups: this.groups.size,
     };
   }
 
@@ -102,7 +107,7 @@ class ConnectionManager {
   // ============================================
   cleanupConnection(userId, response) {
     this.removeUserConnection(userId);
-    
+
     // Remover de todos los grupos
     for (const [groupId, connections] of this.groups.entries()) {
       this.removeUserFromGroup(groupId, response);
@@ -111,6 +116,6 @@ class ConnectionManager {
 }
 
 // Singleton - una sola instancia compartida
-const connectionManager = new ConnectionManager();
+const sseConnectionManager = new SSEConnectionManager();
 
-module.exports = connectionManager;
+module.exports = sseConnectionManager;
