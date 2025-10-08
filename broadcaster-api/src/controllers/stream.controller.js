@@ -1,22 +1,13 @@
-// ============================================
-// Endpoint SSE para conexiones de clientes
-// ============================================
+const sseConnectionManager = require('../sse-connection-manager');
 
-const express = require('express');
-const connections = require('../connections');
-
-const router = express.Router();
-
-// ============================================
-// GET /notifications/stream/:userId
-// Establece conexión SSE con el cliente
-// ============================================
-router.get('/:userId', (req, res) => {
+const streamHandler = async (req, res) => {
   const { userId } = req.params;
 
   // Validación básica (en producción validarías token de auth)
   if (!userId) {
-    return res.status(400).json({ error: 'Missing required parameter: userId' });
+    return res
+      .status(400)
+      .json({ error: 'Missing required parameter: userId' });
   }
 
   console.log(`[SSE] Nueva conexión de userId=${userId}`);
@@ -38,12 +29,12 @@ router.get('/:userId', (req, res) => {
   // ============================================
   // REGISTRAR CONEXIÓN
   // ============================================
-  
+
   // Agregar metadata al Response para tracking
   res.userId = userId;
-  
+
   // Registrar en Map de usuarios
-  connections.addUserConnection(userId, res);
+  sseConnectionManager.addUserConnection(userId, res);
 
   // TODO: En producción, obtener grupos del usuario desde auth token
   // Por ahora, simulamos que el usuario NO está en grupos
@@ -54,7 +45,9 @@ router.get('/:userId', (req, res) => {
   // ENVIAR MENSAJE INICIAL
   // ============================================
   res.write('event: connected\n');
-  res.write(`data: {"userId":"${userId}","timestamp":"${new Date().toISOString()}"}\n\n`);
+  res.write(
+    `data: {"userId":"${userId}","timestamp":"${new Date().toISOString()}"}\n\n`
+  );
 
   // ============================================
   // HEARTBEAT
@@ -65,9 +58,11 @@ router.get('/:userId', (req, res) => {
       res.write('event: heartbeat\n');
       res.write('data: ping\n\n');
     } catch (error) {
-      console.log(`[SSE] Error en heartbeat para ${userId}, limpiando conexión`);
+      console.log(
+        `[SSE] Error en heartbeat para ${userId}, limpiando conexión`
+      );
       clearInterval(heartbeatInterval);
-      connections.cleanupConnection(userId, res);
+      sseConnectionManager.cleanupConnection(userId, res);
     }
   }, 30000); // 30 segundos
 
@@ -77,14 +72,16 @@ router.get('/:userId', (req, res) => {
   req.on('close', () => {
     console.log(`[SSE] Cliente ${userId} cerró conexión`);
     clearInterval(heartbeatInterval);
-    connections.cleanupConnection(userId, res);
+    sseConnectionManager.cleanupConnection(userId, res);
   });
 
   req.on('error', (error) => {
     console.error(`[SSE] Error en conexión de ${userId}:`, error);
     clearInterval(heartbeatInterval);
-    connections.cleanupConnection(userId, res);
+    sseConnectionManager.cleanupConnection(userId, res);
   });
-});
+};
 
-module.exports = router;
+module.exports = {
+  streamHandler,
+};

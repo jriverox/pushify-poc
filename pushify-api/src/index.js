@@ -6,10 +6,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
 const notificationsRouter = require('./routes/notifications');
 const mongoService = require('./services/mongodb');
-const redisService = require('./services/redis');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -64,10 +62,7 @@ async function startServer() {
   try {
     // Conectar a MongoDB
     await mongoService.connect();
-    
-    // Conectar a Redis
-    await redisService.connect();
-    
+
     // Iniciar servidor
     app.listen(PORT, () => {
       console.log(`✅ Pushify API running on port ${PORT}`);
@@ -83,7 +78,6 @@ async function startServer() {
 process.on('SIGINT', async () => {
   console.log('\n🔄 Cerrando servidor...');
   await mongoService.close();
-  await redisService.close();
   process.exit(0);
 });
 

@@ -9,8 +9,8 @@ class MongoDBService {
 
   async connect() {
     try {
-      const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017';
-      const dbName = process.env.MONGODB_DB || 'pushify';
+      const uri = process.env.MONGODB_URI;
+      const dbName = process.env.MONGODB_DB;
 
       this.client = new MongoClient(uri);
       await this.client.connect();
@@ -29,64 +29,17 @@ class MongoDBService {
     }
   }
 
-  async createNotification(messageId, notificationDoc) {
+  async markAsDelivered(messageId) {
     try {
-      const result = await this.collection.insertOne({
-        _id: messageId,
-        ...notificationDoc,
-      });
+      const result = await this.collection.updateOne(
+        { _id: messageId },
+        { $set: { status: 'delivered', deliveredAt: new Date().toISOString() } }
+      );
 
-      console.log(`[MONGODB] Notificación ${messageId} creada`);
+      console.log(`[MONGODB] Notificación ${messageId} marcada como entregada`);
       return result;
     } catch (error) {
-      console.error('[MONGODB] Error creando notificación:', error);
-      throw error;
-    }
-  }
-
-  async getUnreadNotificationsByUser(userId) {
-    try {
-      const query = {
-        'recipient.id': userId,
-        status: { $in: ['pending', 'delivered'] },
-      };
-
-      const notifications = await this.collection
-        .find(query)
-        .sort({ createdAt: -1 })
-        .toArray();
-
-      console.log(
-        `[MONGODB] ${notifications.length} notificaciones no leídas encontradas para ${userId}`
-      );
-      return notifications;
-    } catch (error) {
-      console.error(
-        '[MONGODB] Error obteniendo notificaciones no leídas:',
-        error
-      );
-      throw error;
-    }
-  }
-
-  async getNotificationsByUser(userId, status = 'pending') {
-    try {
-      const query = {
-        'recipient.id': userId,
-        status: status,
-      };
-
-      const notifications = await this.collection
-        .find(query)
-        .sort({ createdAt: -1 })
-        .toArray();
-
-      console.log(
-        `[MONGODB] ${notifications.length} notificaciones encontradas para ${userId}`
-      );
-      return notifications;
-    } catch (error) {
-      console.error('[MONGODB] Error obteniendo notificaciones:', error);
+      console.error('[MONGODB] Error marcando como entregada:', error);
       throw error;
     }
   }

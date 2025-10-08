@@ -1,14 +1,14 @@
 // Load environment variables
 require('dotenv').config();
-
+const mongoService = require('./services/mongodb');
 // ============================================
 // SSE Broadcaster - Mantiene conexiones y envía notificaciones
 // ============================================
 
 const express = require('express');
 const cors = require('cors');
-const streamRouter = require('./routes/stream');
-const redisSubscriber = require('./services/redis-subscriber');
+const streamRouter = require('./routes/stream.route');
+const subscriptionRouter = require('./routes/subscription.route');
 
 const app = express();
 const PORT = process.env.PORT || 8081;
@@ -39,7 +39,7 @@ app.use((req, res, next) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  const connections = require('./connections');
+  const connections = require('./sse-connection-manager');
   res.json({
     status: 'ok',
     service: 'broadcaster-api',
@@ -48,7 +48,9 @@ app.get('/health', (req, res) => {
 });
 
 // SSE Stream endpoint
-app.use('/notifications/stream', streamRouter);
+app.use('/stream/', streamRouter);
+// Subscription endpoint (listener de Pub/Sub)
+app.use('/subscription/', subscriptionRouter);
 
 // 404
 app.use((req, res) => {
@@ -70,14 +72,13 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
   try {
-    // Conectar a Redis
-    await redisSubscriber.connect();
-    
+    // Conectar a MongoDB
+    await mongoService.connect();
+
     // Iniciar servidor
     app.listen(PORT, () => {
       console.log(`✅ Broadcaster API running on port ${PORT}`);
       console.log(`📡 SSE endpoint: /notifications/stream`);
-      console.log(`🔔 Redis subscriber: activo`);
     });
   } catch (error) {
     console.error('❌ Error iniciando servidor:', error);
@@ -88,7 +89,7 @@ async function startServer() {
 // Manejo de cierre graceful
 process.on('SIGINT', async () => {
   console.log('\n🔄 Cerrando servidor...');
-  await redisSubscriber.close();
+  await mongoService.close();
   process.exit(0);
 });
 
