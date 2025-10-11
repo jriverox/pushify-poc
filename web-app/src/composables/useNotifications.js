@@ -3,18 +3,49 @@
 // Lógica de notificaciones (fetch + SSE)
 // ============================================
 
-import { ref, onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted } from "vue";
+import { useNotificationStore } from "../stores/notifications";
+import { ENDPOINTS, APP_CONFIG, DEV_CONFIG, debugLog, errorLog } from "../utils/environments";
 
-export function useNotifications(userId) {
-  // URLs de las APIs (desde variables de entorno)
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-  const BROADCASTER_URL =
-    import.meta.env.VITE_BROADCASTER_URL || 'http://localhost:8081';
+export function useNotifications(userId = APP_CONFIG.DEFAULT_USER_ID) {
 
-  // Estado reactivo
-  const notifications = ref([]);
-  const isConnected = ref(false);
-  const latestNotification = ref(null);
+  // Usar el store global
+  const {
+    notifications,
+    isConnected,
+    latestNotification,
+    isInitialized,
+    setNotifications,
+    addNotification,
+    markNotificationAsRead,
+    setConnectionStatus,
+    setLatestNotification,
+    clearLatestNotification,
+    setMarkAsReadFunction,
+    setInitialized,
+    cleanOldNotifications,
+  } = useNotificationStore();
+
+  // Función real para marcar como leída que llama al API
+  async function markAsReadAPI(notificationId) {
+    try {
+      const response = await fetch(
+        ENDPOINTS.NOTIFICATIONS.MARK_AS_READ(notificationId, userId),
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.ok || response.status === 204) {
+        // Actualizar estado global
+        markNotificationAsRead(notificationId);
+        debugLog(`✅ Notificación ${notificationId} marcada como leída`);
+      }
+    } catch (error) {
+      errorLog("❌ Error marcando notificación como leída:", error);
+    }
+  }
 
   let eventSource = null;
 
@@ -24,18 +55,22 @@ export function useNotifications(userId) {
   async function fetchPendingNotifications() {
     try {
       const response = await fetch(
-        `${API_URL}/notifications?userId=${userId}&status=pending`
+        ENDPOINTS.NOTIFICATIONS.GET_BY_USER(userId, 'pending')
       );
 
       if (response.ok) {
         const data = await response.json();
-        notifications.value = data.notifications.sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        setNotifications(
+          data.notifications.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          )
         );
-        console.log(`✅ ${data.notifications.length} notificaciones pendientes recuperadas`);
+        debugLog(
+          `✅ ${data.notifications.length} notificaciones pendientes recuperadas`
+        );
       }
     } catch (error) {
-      console.error('❌ Error recuperando notificaciones:', error);
+      errorLog("❌ Error recuperando notificaciones:", error);
     }
   }
 
@@ -46,88 +81,71 @@ export function useNotifications(userId) {
     // Cerrar conexión anterior si existe
     if (eventSource) {
       eventSource.close();
+      debugLog("🔌 Conexión SSE anterior cerrada");
     }
 
     // Crear nueva conexión SSE
-    const sseUrl = `${BROADCASTER_URL}/notifications/stream/${userId}`;
+    const sseUrl = ENDPOINTS.SSE.STREAM(userId);
     eventSource = new EventSource(sseUrl);
 
     // Evento: Conexión abierta
     eventSource.onopen = () => {
-      isConnected.value = true;
-      console.log('🔗 Conexión SSE establecida');
+      setConnectionStatus(true);
+      debugLog("🔗 Conexión SSE establecida");
     };
 
     // Evento: Mensaje recibido
     eventSource.onmessage = (event) => {
+      if (DEV_CONFIG.LOG_SSE) {
+        debugLog("📨 Mensaje genérico recibido:", event.data);
+      }
+    };
+
+    // Evento: Notificación específica
+    eventSource.addEventListener("notification", (event) => {
       try {
         const newNotification = JSON.parse(event.data);
 
-        // Agregar notificación al inicio del array
-        notifications.value.unshift(newNotification);
+        // Agregar notificación al store (maneja duplicados internamente)
+        addNotification(newNotification);
 
         // Actualizar última notificación para el toast
-        latestNotification.value = newNotification;
+        setLatestNotification(newNotification);
 
-        // Auto-cerrar toast después de 5 segundos
+        // Auto-cerrar toast después del tiempo configurado
         setTimeout(() => {
           if (
             latestNotification.value?.messageId === newNotification.messageId
           ) {
-            latestNotification.value = null;
+            clearLatestNotification();
           }
-        }, 5000);
+        }, APP_CONFIG.NOTIFICATIONS.TOAST_DURATION);
 
-        console.log(
-          '📬 Nueva notificación recibida:',
-          newNotification.notification.title
-        );
+        if (DEV_CONFIG.LOG_NOTIFICATIONS) {
+          debugLog(
+            "📬 Nueva notificación recibida:",
+            newNotification.notification.title
+          );
+        }
       } catch (error) {
-        console.error('❌ Error procesando notificación:', error);
+        errorLog("❌ Error procesando notificación:", error);
       }
-    };
+    });
 
     // Evento: Error de conexión
     eventSource.onerror = (error) => {
-      isConnected.value = false;
-      console.error('❌ Error en conexión SSE:', error);
+      setConnectionStatus(false);
+      errorLog("❌ Error en conexión SSE:", error);
 
-      // Intentar reconectar después de 5 segundos
+      // Intentar reconectar después del tiempo configurado
       setTimeout(() => {
-        console.log('🔄 Intentando reconectar...');
+        debugLog("🔄 Intentando reconectar...");
         connectToSSE();
-      }, 5000);
+      }, APP_CONFIG.SSE.RECONNECT_DELAY);
     };
   }
 
-  // ============================================
-  // Función 3: Marcar notificación como leída
-  // ============================================
-  async function markAsRead(notificationId) {
-    try {
-      const response = await fetch(
-        `${API_URL}/notifications/${notificationId}/read?userId=${userId}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-
-      if (response.ok || response.status === 204) {
-        // Actualizar estado local
-        const notification = notifications.value.find(
-          (n) => n.messageId === notificationId
-        );
-
-        if (notification) {
-          notification.status = 'read';
-          console.log(`✅ Notificación ${notificationId} marcada como leída`);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error marcando notificación como leída:', error);
-    }
-  }
+  // La función markAsRead ya está implementada arriba como markAsReadAPI
 
   // ============================================
   // Función 4: Refrescar notificaciones
@@ -140,7 +158,24 @@ export function useNotifications(userId) {
   // Lifecycle: Inicializar al montar el componente
   // ============================================
   onMounted(async () => {
-    console.log('🚀 Inicializando sistema de notificaciones...');
+    // Solo inicializar si no se ha hecho antes
+    if (isInitialized.value) {
+      debugLog(
+        "🚀 Sistema de notificaciones ya inicializado, reutilizando..."
+      );
+      return;
+    }
+
+    debugLog("🚀 Inicializando sistema de notificaciones...");
+
+    // Marcar como inicializado
+    setInitialized(true);
+
+    // Limpiar notificaciones antiguas
+    cleanOldNotifications();
+
+    // Registrar la función real de markAsRead en el store
+    setMarkAsReadFunction(markAsReadAPI);
 
     // 1. Recuperar notificaciones pendientes
     await fetchPendingNotifications();
@@ -155,7 +190,7 @@ export function useNotifications(userId) {
   onUnmounted(() => {
     if (eventSource) {
       eventSource.close();
-      console.log('🔌 Conexión SSE cerrada');
+      debugLog("🔌 Conexión SSE cerrada");
     }
   });
 
@@ -166,7 +201,7 @@ export function useNotifications(userId) {
     notifications,
     isConnected,
     latestNotification,
-    markAsRead,
+    markAsRead: markAsReadAPI,
     refresh,
   };
 }

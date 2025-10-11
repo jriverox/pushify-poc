@@ -1,5 +1,5 @@
-const sseConnectionManager = require('../sse-connection-manager');
-const mongoService = require('../services/mongodb');
+const sseConnectionManager = require("../sse-connection-manager");
+const mongoService = require("../services/mongodb");
 
 const subscriptionHandler = async (req, res) => {
   try {
@@ -7,16 +7,16 @@ const subscriptionHandler = async (req, res) => {
     const { message } = req.body;
 
     if (!message || !message.data) {
-      console.log('[PUBSUB] Mensaje inválido recibido');
-      return res.status(400).json({ error: 'Invalid message format' });
+      console.log("[PUBSUB] Mensaje inválido recibido");
+      return res.status(400).json({ error: "Invalid message format" });
     }
 
     // Decodificar mensaje (viene en base64)
     const messageData = JSON.parse(
-      Buffer.from(message.data, 'base64').toString('utf-8')
+      Buffer.from(message.data, "base64").toString("utf-8")
     );
 
-    const { messageId, recipient, notification } = messageData;
+    const { messageId, recipient, notification, sender } = messageData;
 
     console.log(
       `[PUBSUB] 📨 Mensaje recibido: ${messageId} para ${recipient.type}:${recipient.id}`
@@ -27,18 +27,18 @@ const subscriptionHandler = async (req, res) => {
     // ============================================
     let targetConnections = [];
 
-    if (recipient.type === 'individual') {
+    if (recipient.type === "individual") {
       // Notificación para usuario específico
       const connection = sseConnectionManager.getUserConnection(recipient.id);
       if (connection) {
         targetConnections.push(connection);
       }
-    } else if (recipient.type === 'group') {
+    } else if (recipient.type === "group") {
       // Notificación para grupo
       targetConnections = sseConnectionManager.getGroupConnections(
         recipient.id
       );
-    } else if (recipient.type === 'broadcast') {
+    } else if (recipient.type === "broadcast") {
       // Broadcast a todos los usuarios conectados
       targetConnections = Array.from(sseConnectionManager.users.values());
     }
@@ -51,19 +51,40 @@ const subscriptionHandler = async (req, res) => {
         `[PUBSUB] ✅ Enviando a ${targetConnections.length} conexiones activas`
       );
 
-      // Preparar payload SSE
+      const currentNotification = await mongoService.getNotificationById(
+        messageId
+      );
+      console.log(`[DEBUG] Notificación desde DB:`, {
+        messageId,
+        status: currentNotification?.status,
+        createdAt: currentNotification?.createdAt,
+        deliveredAt: currentNotification?.deliveredAt,
+      });
+
+      // Preparar payload SSE con el estado real de la base de datos (sin fallbacks)
       const sseData = JSON.stringify({
         messageId,
         notification,
         recipient,
+        sender,
+        status: currentNotification?.status,
+        createdAt: currentNotification?.createdAt,
+        deliveredAt: currentNotification?.deliveredAt,
         timestamp: new Date().toISOString(),
+      });
+
+      console.log(`[DEBUG] Payload SSE enviado:`, {
+        messageId,
+        status: currentNotification?.status,
+        createdAt: currentNotification?.createdAt,
+        deliveredAt: currentNotification?.deliveredAt,
       });
 
       // Enviar a cada conexión
       let sentCount = 0;
       for (const connection of targetConnections) {
         try {
-          connection.write('event: notification\n');
+          connection.write("event: notification\n");
           connection.write(`data: ${sseData}\n`);
           connection.write(`id: ${messageId}\n\n`);
           sentCount++;
@@ -87,11 +108,11 @@ const subscriptionHandler = async (req, res) => {
     }
 
     // ACK a Pub/Sub (siempre responder 200 para no reintentar)
-    res.status(200).send('OK');
+    res.status(200).send("OK");
   } catch (error) {
-    console.error('[PUBSUB ERROR]', error);
+    console.error("[PUBSUB ERROR]", error);
     // Aún así hacer ACK para no bloquear el topic
-    res.status(200).send('ERROR');
+    res.status(200).send("ERROR");
   }
 };
 

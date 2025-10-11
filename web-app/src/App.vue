@@ -9,31 +9,19 @@
       <h1>🔔 Pushify - Sistema de Notificaciones</h1>
       <div class="header-info">
         <span class="user-badge">Usuario: {{ userId }}</span>
-        <span 
-          class="connection-status" 
-          :class="{ connected: isConnected, disconnected: !isConnected }"
-        >
+        <span class="connection-status" :class="{ connected: isConnected, disconnected: !isConnected }">
           {{ isConnected ? '● Conectado' : '○ Desconectado' }}
         </span>
-        <span class="notification-count" v-if="unreadCount > 0">
-          {{ unreadCount }} sin leer
-        </span>
+        <NotificationBell />
       </div>
     </header>
 
     <main class="app-main">
-      <!-- Lista de notificaciones -->
-      <NotificationList 
-        :notifications="notifications"
-        @mark-read="markAsRead"
-      />
+      <router-view />
 
       <!-- Toast de notificaciones nuevas -->
-      <NotificationToast 
-        v-if="latestNotification"
-        :notification="latestNotification"
-        @close="latestNotification = null"
-      />
+      <NotificationToast v-if="latestNotification" :notification="latestNotification"
+        @close="clearLatestNotification" />
     </main>
 
     <footer class="app-footer">
@@ -43,37 +31,28 @@
       </button>
     </footer>
   </div>
-  </template>
+</template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import NotificationList from './components/NotificationList.vue';
+import NotificationBell from './components/NotificationBell.vue';
 import NotificationToast from './components/NotificationToast.vue';
 import { useNotifications } from './composables/useNotifications';
+import { useNotificationStore } from './stores/notifications';
+import { ENDPOINTS, APP_CONFIG, debugLog, errorLog } from './utils/environments';
 
-// Simular userId (en producción vendría de auth)
-const userId = 'user123';
+// Usar userId desde configuración
+const userId = APP_CONFIG.DEFAULT_USER_ID;
 
 // Composable de notificaciones
-const {
-  notifications,
-  isConnected,
-  latestNotification,
-  markAsRead,
-  refresh
-} = useNotifications(userId);
+const { refresh } = useNotifications(userId);
 
-// Calcular notificaciones sin leer
-const unreadCount = computed(() => {
-  return notifications.value.filter(n => n.status !== 'read').length;
-});
+// Store global para notificaciones
+const { isConnected, latestNotification, clearLatestNotification } = useNotificationStore();
 
 // Función de prueba: enviar notificación
 async function testNotification() {
   try {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-    
-    const response = await fetch(`${API_URL}/notifications`, {
+    const response = await fetch(ENDPOINTS.NOTIFICATIONS.CREATE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -96,10 +75,12 @@ async function testNotification() {
     });
 
     if (response.ok) {
-      console.log('✅ Notificación de prueba enviada');
+      debugLog('✅ Notificación de prueba enviada');
+      // Refrescar la lista de notificaciones para actualizar el contador
+      await refresh();
     }
   } catch (error) {
-    console.error('Error enviando notificación de prueba:', error);
+    errorLog('Error enviando notificación de prueba:', error);
   }
 }
 </script>
@@ -116,7 +97,7 @@ async function testNotification() {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 2rem;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .app-header h1 {
@@ -130,8 +111,10 @@ async function testNotification() {
   flex-wrap: wrap;
 }
 
-.user-badge, .connection-status, .notification-count {
-  background: rgba(255,255,255,0.2);
+.user-badge,
+.connection-status,
+.notification-count {
+  background: rgba(255, 255, 255, 0.2);
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.9rem;
