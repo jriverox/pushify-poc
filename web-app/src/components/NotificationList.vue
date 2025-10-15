@@ -100,85 +100,121 @@ function formatTime(isoString) {
 
 <style scoped>
 .notification-list {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .notification-list h2 {
-  margin: 0 0 1.5rem 0;
-  color: #333;
+  margin: 0 0 1.25rem 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding: 0 0.5rem;
 }
 
 .empty-state {
   text-align: center;
-  padding: 3rem;
-  color: #999;
-  font-size: 1.1rem;
+  padding: 4rem 2rem;
+  color: var(--text-tertiary);
+  font-size: 1rem;
+}
+
+.empty-state p {
+  margin: 0;
 }
 
 .notification-item {
   display: flex;
   gap: 1rem;
-  padding: 1.5rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
   cursor: pointer;
-  transition: all 0.3s;
-  background: white;
+  transition: all 0.2s ease;
+  background: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.notification-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: transparent;
+  transition: background 0.2s ease;
 }
 
 .notification-item:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--text-tertiary);
+  transform: translateY(-1px);
 }
 
 .notification-item.read {
-  opacity: 0.6;
-  background: #f9f9f9;
+  opacity: 0.65;
+  background: var(--bg-secondary);
 }
 
-.notification-item.priority-urgent {
-  border-left: 4px solid #f44336;
+.notification-item.priority-urgent::before {
+  background: var(--secondary-color);
 }
 
-.notification-item.priority-high {
-  border-left: 4px solid #ff9800;
+.notification-item.priority-high::before {
+  background: var(--warning-color);
 }
 
 .notification-icon {
-  font-size: 2rem;
+  font-size: 1.75rem;
   flex-shrink: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
 }
 
 .notification-content {
   flex: 1;
+  min-width: 0;
 }
 
 .notification-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 0.5rem;
+  gap: 1rem;
 }
 
 .notification-header h3 {
   margin: 0;
-  font-size: 1.1rem;
-  color: #333;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
 }
 
 .notification-time {
-  font-size: 0.85rem;
-  color: #999;
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  font-weight: 500;
 }
 
 .notification-text {
-  margin: 0.5rem 0 1rem 0;
-  color: #666;
+  margin: 0.5rem 0 0.875rem 0;
+  color: var(--text-secondary);
   line-height: 1.5;
+  font-size: 0.875rem;
 }
 
 .notification-meta {
@@ -188,46 +224,49 @@ function formatTime(isoString) {
 }
 
 .badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: capitalize;
 }
 
 .badge.priority {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #E3F2FD;
+  color: var(--info-color);
 }
 
 .badge.category {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: #F3E5F5;
+  color: #9C27B0;
 }
 
 .badge.sender {
-  background: #e8f5e9;
-  color: #388e3c;
+  background: #E8F5E9;
+  color: var(--success-color);
 }
 
 .notification-status {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .status-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .status-badge.read {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: #E8F5E9;
+  color: var(--success-color);
 }
 
 .status-badge.unread {
-  background: #fff3e0;
-  color: #e65100;
+  background: #FFF3E0;
+  color: var(--warning-color);
 }
 </style>

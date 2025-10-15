@@ -90,48 +90,53 @@ async function testNotification() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: var(--bg-secondary);
 }
 
 .app-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: 1.5rem 2rem;
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .app-header h1 {
   margin: 0 0 1rem 0;
-  font-size: 2rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
 }
 
 .header-info {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .user-badge,
-.connection-status,
-.notification-count {
-  background: rgba(255, 255, 255, 0.2);
+.connection-status {
+  background: var(--bg-secondary);
   padding: 0.5rem 1rem;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .connection-status.connected {
-  background: rgba(76, 175, 80, 0.8);
+  background: #E8F5E9;
+  color: var(--success-color);
+  border-color: var(--success-color);
 }
 
 .connection-status.disconnected {
-  background: rgba(244, 67, 54, 0.8);
-}
-
-.notification-count {
-  background: rgba(255, 193, 7, 0.9);
-  color: #333;
-  font-weight: bold;
+  background: #FFEBEE;
+  color: var(--secondary-color);
+  border-color: var(--secondary-color);
 }
 
 .app-main {
@@ -143,25 +148,39 @@ async function testNotification() {
 }
 
 .app-footer {
-  background: white;
-  padding: 1.5rem;
+  background: var(--bg-primary);
+  padding: 2rem;
   text-align: center;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--border-color);
+}
+
+.app-footer p {
+  margin: 0 0 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 .btn-test {
-  margin-top: 1rem;
-  padding: 0.75rem 1.5rem;
-  background: #667eea;
+  padding: 0.875rem 2rem;
+  background: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 1rem;
-  transition: background 0.3s;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-test:hover {
-  background: #5568d3;
+  background: var(--primary-hover);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.btn-test:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 </style>
