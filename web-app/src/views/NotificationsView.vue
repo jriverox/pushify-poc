@@ -32,41 +32,53 @@ const goBack = () => {
 
 <style scoped>
 .notifications-view {
-  padding: 20px;
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
 .header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  background: var(--bg-primary);
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-back {
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  font-size: 1.125rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
 }
 
 .btn-back:hover {
-  background-color: #5a6268;
+  background: var(--bg-tertiary);
+  border-color: var(--text-tertiary);
+  transform: translateX(-2px);
 }
 
 .btn-back:active {
-  background-color: #545b62;
+  transform: translateX(0);
 }
 
 h1 {
   margin: 0;
-  color: #333;
+  color: var(--text-primary);
   flex: 1;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
 }
 </style>
